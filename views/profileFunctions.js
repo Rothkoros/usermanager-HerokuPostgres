@@ -1,7 +1,6 @@
 function editUser(guid){
     window.location = `/edituser?userid=${guid}`
 
-
 }
 function deleteUser(guid) {
     let xhttp = new XMLHttpRequest();

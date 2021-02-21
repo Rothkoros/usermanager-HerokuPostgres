@@ -1,5 +1,6 @@
 //api to the database
-const Pool = require("pg-pool");
+const {v4:uuidv4} = require("uuid")
+const {Pool} = require("pg");
 const url = require("url");
 const dbConnectionString = process.env.DATABASE_URL;
 
@@ -16,12 +17,14 @@ const config = {
   database: params.pathname.split("/")[1],
   ssl: SSL,
 };
-const pool = new Pool(config);
+const pool = new Pool({
+  connectionString:dbConnectionString, SSL: {rejectUnauthorized: false,}, ...config
+});
 let client
 const createTable = `
-CREATE TABLE IF NO EXISTS users (
+CREATE TABLE IF NOT EXISTS users (
   id serial PRIMARY KEY,
-  guid(36),
+  guid char(36),
   firstName text,
   lastName text,
   email varchar(50),
@@ -57,51 +60,51 @@ const getUsers = (req, res) => {
   //   res.status(200).json(results.rows);
   // });
 };
-const createUser = (req, res) => {
+const createUser = (request, response) => {
   const guid = uuidv4();
-  const firstName = req.body.firstName;
-  const lastName = req.body.lastName;
-  const email = req.body.email;
-  const age = req.body.age
+  const firstName = request.body.firstName;
+  const lastName = request.body.lastName;
+  const email = request.body.email;
+  const age = request.body.age
 
   let createUserSQL = "insert into users (guid, firstName, lastName, email, age) values ($1, $2, $3, $4, $5)";
   return new Promise((resolve, reject) =>{
     pool.query(createUserSQL, [guid, firstName, lastName, email, age], (err, results) => {
       if (err) {
         reject (err);
-        resolve(results)
       }
+      resolve(results)
     });
   })
 };
-const deleteUser = (req, res) => {
-  const guid = req.headers.userid;
+const deleteUser = (request, response) => {
+  const guid = request.headers.userid;
   let deleteUserSQL = "delete from users where guid = $1";
   return new Promise(( resolve, reject) =>{
 
     pool.query(deleteUserSQL, [guid], (err, results) => {
       if (err) {
         reject (err);
-        resolve (results);
       }
+      resolve (results);
     });
   })
 };
-const updateUser = (req, res) => {
-  const id = req.body.id;
-  const firstName = req.body.name;
-  const lastName = req.body.name;
-  const email = req.body.email;
-  const age = req.body.age;
+const updateUser = (request, res) => {
+  const guid = request.query.userid;
+  const firstName = request.body.firstName;
+  const lastName = request.body.lastName;
+  const email = request.body.email;
+  const age = request.body.age;
 
-  let updateUserSQL = "update users set guid = $1, firstname = $2, lastName = $3, email = $4, age = $5 ";
+  let updateUserSQL = "update users set firstname = $1, lastName = $2, email = $3, age = $4 where guid = $5 ";
   return new Promise((resolve, reject) =>{
     
-    pool.query(updateUserSQL, [id, firstName, lastName, email, age], (err, results) => {
+    pool.query(updateUserSQL, [firstName, lastName, email, age, guid], (err, results) => {
       if (err) {
         reject (err);
-        resolve(results)
       }
+      resolve(results)
     });
   })
 };
@@ -118,7 +121,7 @@ const getOneUser = (req, res) =>{
   })
 };
 const getSortedUsers = (sortDirection) => {
-  let sortSQL =  ` select * from users order by firstName ${sortDirection}`;
+  let sortSQL =  `select * from users order by firstname ${sortDirection}`;
   return new Promise((resolve, reject) =>{
     pool.query(sortSQL, (err, results) =>{
       if (err)
@@ -127,8 +130,9 @@ const getSortedUsers = (sortDirection) => {
     })
   }) 
 };
+
 const searchUsers = (searchReq)=>{
-  let searchSQL = "select firstName, lastName from users where firstName = $1 or lastName = $1";
+  let searchSQL = "select firstname, lastname, email, age from users where firstname = $1 or lastname = $1";
   return new Promise((resolve, reject) =>{
     pool.query(searchSQL, [searchReq], (err, results) => {
       if (err)
