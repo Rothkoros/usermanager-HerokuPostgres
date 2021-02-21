@@ -6,7 +6,7 @@ const db = require('./db');
 app.use(express.urlencoded({extended: false}))
 
 //api for the client (browser)
-db.on("error", console.error.bind(console, "connection error:"));
+// db.on("error", console.error.bind(console, "connection error:"));
 db.once("open", function () {
   console.log("db connected");
 });
